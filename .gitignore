@@ -1,0 +1,100 @@
+# =========================================================================
+# 1. ZALEŻNOŚCI I MENEDŻERY PAKIETÓW (node_modules, yarn, pnpm)
+# =========================================================================
+node_modules/
+/node_modules
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# =========================================================================
+# 2. PLIKI ŚRODOWISKOWE Z SEKRETAMI (KLUCZOWE DLA BEZPIECZEŃSTWA!)
+# =========================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*
+*.env
+# WYJĄTEK: Gwarantujemy, że bezpieczny szablon .env.example ZOSTANIE wysłany:
+!.env.example
+
+# =========================================================================
+# 3. PLIKI KOMPILACJI I PRODUKCYJNE (NestJS, Next.js, Prisma)
+# =========================================================================
+dist/
+/dist
+.next/
+/.next/
+out/
+/out
+build/
+/build
+*.tsbuildinfo
+next-env.d.ts
+/generated/prisma
+.vercel
+
+# =========================================================================
+# 4. LOGI I DIAGNOSTYKA DEWELOPERSKA
+# =========================================================================
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# =========================================================================
+# 5. SYSTEMY OPERACYJNE (OS)
+# =========================================================================
+.DS_Store
+Thumbs.db
+*.pem
+
+# =========================================================================
+# 6. IDES I EDYTORY KODU (VS Code, IntelliJ, Eclipse)
+# =========================================================================
+# IntelliJ / WebStorm
+.idea/
+/.idea
+# Eclipse
+.project
+.classpath
+.settings/
+# Cloud9 / Sublime / inne
+.c9/
+*.launch
+*.sublime-workspace
+# VS Code (ignorujemy wszystko poza przydatnymi konfiguracjami)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# =========================================================================
+# 7. RAPORTY TESTÓW JEDNOSTKOWYCH
+# =========================================================================
+coverage/
+/coverage
+.nyc_output/
+/.nyc_output
+
+# =========================================================================
+# 8. DANE TYMCZASOWE I SYSTEMOWE (temp, pids)
+# =========================================================================
+.temp/
+.tmp/
+pids
+*.pid
+*.seed
+*.pid.lock

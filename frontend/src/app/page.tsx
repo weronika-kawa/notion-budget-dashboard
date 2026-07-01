@@ -1,0 +1,233 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  fetchAllMonths,
+  fetchMonthSummary,
+  fetchCategoryBreakdown,
+  fetchAccountBalances,
+  fetchRecentTransactions,
+  fetchMonthlyTrend,
+  triggerSyncAll,
+} from "@/lib/api";
+
+// Import naszych modularnych komponentów
+import { SummaryCards } from "@/components/dashboard/SummaryCards";
+import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
+import { AccountBalances } from "@/components/dashboard/AccountBalances";
+import { CategoryPieChart } from "@/components/dashboard/CategoryPieChart";
+import { TrendBarChart } from "@/components/dashboard/TrendBarChart";
+
+// Import gotowych komponentów UI od Shadcn
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { RefreshCw, Calendar, PiggyBank } from "lucide-react";
+
+export default function DashboardPage() {
+  const [months, setMonths] = useState<any[]>([]);
+  const [selectedMonthId, setSelectedMonthId] = useState<string>("");
+  
+  const [summary, setSummary] = useState<any>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [balances, setBalances] = useState<any[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
+  const [trendData, setTrendData] = useState<any[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Pobieranie danych, które nie zmieniają się w kontekście wyboru miesiąca (sald kont, trend, transakcje)
+  const loadStaticData = async () => {
+    try {
+      const [accBalances, recent, trend] = await Promise.all([
+        fetchAccountBalances(),
+        fetchRecentTransactions(),
+        fetchMonthlyTrend(),
+      ]);
+      setBalances(accBalances);
+      setRecentTransactions(recent);
+      setTrendData(trend);
+    } catch (error) {
+      console.error("Błąd podczas pobierania danych ogólnych:", error);
+    }
+  };
+
+  // ŁADOWANIE POCZĄTKOWE: Pobieramy listę miesięcy oraz dane ogólne
+  useEffect(() => {
+    async function initDashboard() {
+      setLoading(true);
+      try {
+        const fetchedMonths = await fetchAllMonths();
+        setMonths(fetchedMonths);
+        
+        // Ustawiamy domyślnie pierwszy (najnowszy chronologicznie) miesiąc na liście
+        if (fetchedMonths.length > 0) {
+          setSelectedMonthId(fetchedMonths[0].id);
+        }
+        
+        await loadStaticData();
+      } catch (error) {
+        console.error("Błąd podczas inicjalizacji dashboardu:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    initDashboard();
+  }, []);
+
+  // REAKCJA NA ZMIANĘ WYBRANEGO MIESIĄCA (Pobieramy summary i kategorie)
+  useEffect(() => {
+    if (!selectedMonthId) return;
+
+    async function loadMonthlyData() {
+      try {
+        const [sum, catBreakdown] = await Promise.all([
+          fetchMonthSummary(selectedMonthId),
+          fetchCategoryBreakdown(selectedMonthId),
+        ]);
+        setSummary(sum);
+        setCategories(catBreakdown);
+      } catch (error) {
+        console.error("Błąd podczas pobierania danych miesięcznych:", error);
+      }
+    }
+    loadMonthlyData();
+  }, [selectedMonthId]);
+
+  // AKCJA: Ręczna synchronizacja z Notion API
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const syncResult = await triggerSyncAll();
+      if (syncResult.success) {
+        alert(`Synchronizacja ukończona! Pomyślnie zsynchronizowano ${syncResult.totalItems} rekordów.`);
+        
+        // Odświeżamy listę miesięcy (mogły dojść nowe z Notion!)
+        const fetchedMonths = await fetchAllMonths();
+        setMonths(fetchedMonths);
+        
+        // Jeśli nie mieliśmy wcześniej wybranego miesiąca, ustawiamy najnowszy
+        if (!selectedMonthId && fetchedMonths.length > 0) {
+          setSelectedMonthId(fetchedMonths[0].id);
+        } else if (selectedMonthId) {
+          // Odświeżamy dane wybranego obecnie miesiąca
+          const [sum, catBreakdown] = await Promise.all([
+            fetchMonthSummary(selectedMonthId),
+            fetchCategoryBreakdown(selectedMonthId),
+          ]);
+          setSummary(sum);
+          setCategories(catBreakdown);
+        }
+
+        // Odświeżamy dane ogólne
+        await loadStaticData();
+      } else {
+        alert(`Błąd podczas synchronizacji: ${syncResult.error}`);
+      }
+    } catch (error) {
+      console.error("Błąd podczas wywołania synchronizacji:", error);
+      alert("Wystąpił błąd krytyczny podczas wywoływania synchronizacji z Notion API.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // EKRAN ŁADOWANIA (Loader)
+  if (loading) {
+    return (
+      <div className="flex h-screen w-screen flex-col items-center justify-center gap-3 bg-slate-50">
+        <RefreshCw className="h-8 w-8 animate-spin text-indigo-600" />
+        <p className="text-sm font-semibold text-slate-600">Ładowanie Twojego budżetu...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50/50 pb-12">
+      {/* PASEK NAWIGACYJNY (HEADER) */}
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4 max-w-7xl">
+          {/* Logo i Nazwa */}
+          <div className="flex items-center gap-2">
+            <PiggyBank className="h-6 w-6 text-indigo-600" />
+            <span className="text-lg font-bold tracking-tight text-slate-800">Notion Budget Dashboard</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Przycisk synchronizacji na żywo */}
+            <Button 
+              onClick={handleSync} 
+              disabled={isSyncing}
+              variant="outline"
+              className="flex items-center gap-2 border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Synchronizowanie..." : "Synch z Notion"}
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* GŁÓWNA STRONA DASHBOARDU */}
+      <main className="container mx-auto px-4 mt-6 max-w-7xl space-y-6">
+        
+        {/* PASEK FILTROWANIA I WYBORU OKRESU */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div>
+            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-indigo-500" />
+              Przegląd Miesięczny
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">Wybierz okres, aby zaktualizować dane na wykresach.</p>
+          </div>
+          
+          {/* Dropdown wyboru miesiąca */}
+          <div className="w-full sm:w-[220px]">
+            {months.length > 0 && (
+              <Select value={selectedMonthId} onValueChange={(val) => setSelectedMonthId(val ?? "")}>
+                <SelectTrigger className="w-full border-slate-200 bg-white">
+                  <SelectValue placeholder="Wybierz miesiąc" />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+
+        {/* 1. SEKCJA: TRZY KAFELKI PODSUMOWAŃ */}
+        <SummaryCards summary={summary} />
+
+        {/* 2. SEKCJA: WYKRESY I STRUKTURA WYDATKÓW */}
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+          {/* Wykres trendu z ostatnich 6 miesięcy (zajmuje 2/3 szerokości) */}
+          <TrendBarChart trendData={trendData} />
+
+          {/* Wykres kołowy struktury wydatków (zajmuje 1/3 szerokości) */}
+          <CategoryPieChart categories={categories} />
+        </div>
+
+        {/* 3. SEKCJA: TRANSAKCJE I STAN KONT BANKOWYCH */}
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+          {/* Tabela ostatnich transakcji (zajmuje 2/3 szerokości) */}
+          <RecentTransactions transactions={recentTransactions} />
+
+          {/* Aktualne salda kont bankowych (zajmuje 1/3 szerokości) */}
+          <AccountBalances balances={balances} />
+        </div>
+
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # 1. Baza danych PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: budget-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: budget_user
+      POSTGRES_PASSWORD: budget_password
+      POSTGRES_DB: budget_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - budget-network
+
+  # 2. Serwer NestJS (Backend)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: budget-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Łączymy się z kontenerem 'postgres' zamiast localhosta
+      - DATABASE_URL=postgresql://budget_user:budget_password@postgres:5432/budget_db?schema=public
+      - NOTION_API_KEY=${NOTION_API_KEY}
+      - NOTION_DB_MONTHS=${NOTION_DB_MONTHS}
+      - NOTION_DB_ACCOUNTS=${NOTION_DB_ACCOUNTS}
+      - NOTION_DB_EXP_CATEGORIES=${NOTION_DB_EXP_CATEGORIES}
+      - NOTION_DB_INC_CATEGORIES=${NOTION_DB_INC_CATEGORIES}
+      - NOTION_DB_INC_PLANS=${NOTION_DB_INC_PLANS}
+      - NOTION_DB_EXP_PLANS=${NOTION_DB_EXP_PLANS}
+      - NOTION_DB_INCOMES=${NOTION_DB_INCOMES}
+      - NOTION_DB_EXPENSES=${NOTION_DB_EXPENSES}
+    depends_on:
+      - postgres
+    networks:
+      - budget-network
+
+  # 3. Interfejs Next.js (Frontend)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Na Twoim komputerze Next.js będzie odpytywać localhost:3000 (Twoja przeglądarka to widzi)
+        - NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
+    container_name: budget-frontend
+    restart: always
+    ports:
+      - "3001:3000" # Mapujemy port 3001 komputera na port 3000 kontenera Next.js
+    depends_on:
+      - backend
+    networks:
+      - budget-network
+
+volumes:
+  postgres_data:
+
+networks:
+  budget-network:
+    driver: bridge

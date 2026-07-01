@@ -1,0 +1,155 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Centralna baza czasowa: Miesiące
+model Month {
+  id           String        @id @default(uuid())
+  notionId     String        @unique              // Mapowanie unikalnego ID z Notion
+  name         String                             // "Styczeń 2026"
+  number       Int                                // Numer miesiąca (1-12)
+  year         Int                                // Rok (2026)
+  startDate    DateTime                           // Data rozpoczęcia miesiąca (z pola Date w Notion)
+  
+  // Relacje
+  incomes      Income[]
+  expenses     Expense[]
+  incomePlans  IncomePlan[]
+  expensePlans ExpensePlan[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// 2. Konta bankowe / oszczędnościowe
+model Account {
+  id        String    @id @default(uuid())
+  notionId  String    @unique
+  name      String    // "Konto wspólne"
+  date      DateTime? // Opcjonalna data np. założenia konta
+
+  // Relacje
+  incomes   Income[]
+  expenses  Expense[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// 3. Kategorie wydatków
+model ExpenseCategory {
+  id        String        @id @default(uuid())
+  notionId  String        @unique
+  name      String        // Nazwa kategorii (np. "Jedzenie")
+
+  // Relacje
+  expenses  Expense[]
+  plans     ExpensePlan[]
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+// 4. Kategorie przychodów
+model IncomeCategory {
+  id        String       @id @default(uuid())
+  notionId  String       @unique
+  name      String       // "Pensja"
+
+  // Relacje
+  incomes   Income[]
+  plans     IncomePlan[]
+
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+// 5. Plan przychodów
+model IncomePlan {
+  id            String         @id @default(uuid())
+  notionId      String         @unique
+  name          String         // Nazwa pozycji planu
+  plannedAmount Float          // Zaplanowana kwota przychodu (pole "Plan" z Notion)
+  
+  // Relacje
+  categoryId    String
+  category      IncomeCategory @relation(fields: [categoryId], references: [id])
+  monthId       String
+  month         Month          @relation(fields: [monthId], references: [id])
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+// 6. Plan wydatków
+model ExpensePlan {
+  id            String          @id @default(uuid())
+  notionId      String          @unique
+  name          String          // Nazwa pozycji planu
+  plannedAmount Float           // Limit wydatków (pole "Plan" z Notion)
+  
+  // Relacje
+  categoryId    String
+  category      ExpenseCategory @relation(fields: [categoryId], references: [id])
+  monthId       String
+  month         Month           @relation(fields: [monthId], references: [id])
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+// 7. Rzeczywiste przychody
+model Income {
+  id         String         @id @default(uuid())
+  notionId   String         @unique
+  name       String         // "Wypłata Michała"
+  amount     Float          // Kwota transakcji
+  date       DateTime       // "Data Przychodu"
+  notes      String?        // Opcjonalne notatki
+  
+  // Relacje
+  categoryId String
+  category   IncomeCategory @relation(fields: [categoryId], references: [id])
+  accountId  String
+  account    Account        @relation(fields: [accountId], references: [id])
+  monthId    String
+  month      Month          @relation(fields: [monthId], references: [id])
+
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+}
+
+// 8. Rzeczywiste wydatki
+model Expense {
+  id         String          @id @default(uuid())
+  notionId   String          @unique
+  name       String          // "Zakupy Lidl"
+  amount     Float           // Kwota transakcji
+  date       DateTime        // "Data Wydatku"
+  notes      String?         // Opcjonalne notatki
+
+  // Relacje
+  categoryId String
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+  accountId  String
+  account    Account         @relation(fields: [accountId], references: [id])
+  monthId    String
+  month      Month           @relation(fields: [monthId], references: [id])
+
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
+// Logi synchronizacji
+model SyncLog {
+  id          Int      @id @default(autoincrement())
+  syncedAt    DateTime @default(now())
+  status      String   // "SUCCESS" lub "FAILED"
+  itemsSynced Int      @default(0)
+  error       String?
+}
