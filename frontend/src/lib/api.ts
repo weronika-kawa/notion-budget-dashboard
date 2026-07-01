@@ -1,5 +1,6 @@
-// Domyślnie łączymy się z localhostem, ale pozwalamy na zmianę przez zmienne środowiskowe
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+// Przed zmianą: const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3000';
+// Po zmianie: używamy ścieżek relatywnych (ten sam host/domena)
+const BACKEND_URL = '';
 
 // 1. Pobieranie listy wszystkich miesięcy (do dropdownu)
 export async function fetchAllMonths() {
