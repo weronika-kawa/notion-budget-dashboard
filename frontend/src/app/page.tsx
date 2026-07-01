@@ -42,6 +42,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Wyliczamy czytelną nazwę wybranego miesiąca do wyświetlenia w dropdownie
+  const selectedMonthName = months.find((m: any) => m.id === selectedMonthId)?.name || "Wybierz miesiąc";
+
   // Pobieranie danych, które nie zmieniają się w kontekście wyboru miesiąca (sald kont, trend, transakcje)
   const loadStaticData = async () => {
     try {
@@ -66,9 +69,19 @@ export default function DashboardPage() {
         const fetchedMonths = await fetchAllMonths();
         setMonths(fetchedMonths);
         
-        // Ustawiamy domyślnie pierwszy (najnowszy chronologicznie) miesiąc na liście
-        if (fetchedMonths.length > 0) {
-          setSelectedMonthId(fetchedMonths[0].id);
+        // Dynamicznie szukamy bieżącego miesiąca na podstawie dzisiejszej daty
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonthNumber = today.getMonth() + 1; // getMonth() zwraca 0-11, dodajemy 1
+
+        const currentMonth = fetchedMonths.find(
+          (m: any) => m.year === currentYear && m.number === currentMonthNumber
+        );
+
+        if (currentMonth) {
+          setSelectedMonthId(currentMonth.id); // Ustawiamy ID bieżącego miesiąca (np. Lipiec 2026)
+        } else if (fetchedMonths.length > 0) {
+          setSelectedMonthId(fetchedMonths[0].id); // Fallback: najnowszy na liście
         }
         
         await loadStaticData();
@@ -109,12 +122,25 @@ export default function DashboardPage() {
         alert(`Synchronizacja ukończona! Pomyślnie zsynchronizowano ${syncResult.totalItems} rekordów.`);
         
         // Odświeżamy listę miesięcy (mogły dojść nowe z Notion!)
+        // Odświeżamy listę miesięcy
         const fetchedMonths = await fetchAllMonths();
         setMonths(fetchedMonths);
         
-        // Jeśli nie mieliśmy wcześniej wybranego miesiąca, ustawiamy najnowszy
         if (!selectedMonthId && fetchedMonths.length > 0) {
-          setSelectedMonthId(fetchedMonths[0].id);
+          // Szukamy bieżącego miesiąca
+          const today = new Date();
+          const currentYear = today.getFullYear();
+          const currentMonthNumber = today.getMonth() + 1;
+
+          const currentMonth = fetchedMonths.find(
+            (m: any) => m.year === currentYear && m.number === currentMonthNumber
+          );
+
+          if (currentMonth) {
+            setSelectedMonthId(currentMonth.id);
+          } else {
+            setSelectedMonthId(fetchedMonths[0].id);
+          }
         } else if (selectedMonthId) {
           // Odświeżamy dane wybranego obecnie miesiąca
           const [sum, catBreakdown] = await Promise.all([
@@ -192,10 +218,13 @@ export default function DashboardPage() {
             {months.length > 0 && (
               <Select value={selectedMonthId} onValueChange={(val) => setSelectedMonthId(val ?? "")}>
                 <SelectTrigger className="w-full border-slate-200 bg-white">
-                  <SelectValue placeholder="Wybierz miesiąc" />
+                  {/* Wymuszamy, aby wyświetlała się piękna nazwa, a nie ID */}
+                  <SelectValue placeholder="Wybierz miesiąc">
+                    {selectedMonthName}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {months.map((m) => (
+                  {months.map((m: any) => (
                     <SelectItem key={m.id} value={m.id}>
                       {m.name}
                     </SelectItem>
