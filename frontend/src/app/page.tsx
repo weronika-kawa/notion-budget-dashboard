@@ -17,6 +17,7 @@ import { RecentTransactions } from "@/components/dashboard/RecentTransactions";
 import { AccountBalances } from "@/components/dashboard/AccountBalances";
 import { CategoryPieChart } from "@/components/dashboard/CategoryPieChart";
 import { TrendBarChart } from "@/components/dashboard/TrendBarChart";
+import { CategoryBreakdownList } from "@/components/dashboard/CategoryBreakdownList";
 
 // Import gotowych komponentów UI od Shadcn
 import {
@@ -240,9 +241,10 @@ export default function DashboardPage() {
 
         {/* 2. SEKCJA: WYKRESY I STRUKTURA WYDATKÓW */}
         <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
-          {/* Wykres trendu z ostatnich 6 miesięcy (zajmuje 2/3 szerokości) */}
-          <TrendBarChart trendData={trendData} />
-
+          {/* Kategorie (zajmuje 2/3 szerokości) */}
+          <div className="lg:col-span-2"> {/* TUTAJ kontrolujesz szerokość (2/3) */}
+            <CategoryBreakdownList categories={categories} />
+          </div>
           {/* Wykres kołowy struktury wydatków (zajmuje 1/3 szerokości) */}
           <CategoryPieChart categories={categories} />
         </div>
@@ -252,9 +254,40 @@ export default function DashboardPage() {
           {/* Tabela ostatnich transakcji (zajmuje 2/3 szerokości) */}
           <RecentTransactions transactions={recentTransactions} />
 
-          {/* Aktualne salda kont bankowych (zajmuje 1/3 szerokości) */}
+          {/* Stan kont bankowych (zajmuje 1/3 szerokości) */}
           <AccountBalances balances={balances} />
         </div>
+
+        {/* 4. SEKCJA: SZCZEGÓŁOWA LISTA KATEGORII (2/3 SZEROKOŚCI) + WSKAZÓWKA (1/3) */}
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-3">
+          {/* Lista kategorii w dwóch kolumnach (zajmuje 2/3 szerokości) */}
+          <div className="lg:col-span-2">
+            <CategoryBreakdownList categories={categories} />
+          </div>
+
+          {/* Karta na 1/3 szerokości dla zachowania idealnej symetrii layoutu */}
+          <div className="col-span-1 rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between">
+            <div className="space-y-2">
+              <h3 className="font-bold tracking-tight text-lg text-slate-800 flex items-center gap-1.5">
+                Wskazówka Budżetowa 💡
+              </h3>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Planowanie to klucz do wolności finansowej. Regularne uzupełnianie limitów w Notion dla każdej kategorii wydatków pozwala aplikacji na automatyczne wyliczanie pozostałych środków i wizualizację postępów w czasie rzeczywistym.
+              </p>
+            </div>
+            
+            {/* Informacje o bezpieczeństwie Twojego serwera Proxmox */}
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+              <span>Status domowego serwera:</span>
+              <span className="text-emerald-600 flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Zabezpieczony (Cloudflare OTP)
+              </span>
+            </div>
+          </div>
+        </div>
+        
+        <TrendBarChart trendData={trendData} />
 
       </main>
     </div>
